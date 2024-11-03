@@ -1,13 +1,12 @@
-// store/slices/cartSlices.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 const FAKE_API_URL = "https://fakestoreapi.com/products";
 
-
+// Acción para agregar un producto al carrito
 export const addToCart = createAsyncThunk(
   'cart/addToCart',
   async (product, { rejectWithValue }) => {
       try {
-          const token = localStorage.getItem('token'); // Asegúrate de que el token esté en localStorage
+          const token = localStorage.getItem('token');
 
           const response = await fetch('/api/cart', {
               method: 'POST',
@@ -35,14 +34,12 @@ export const addToCart = createAsyncThunk(
   }
 );
 
-
+// Acción para obtener los items del carrito con datos detallados
 export const fetchCartItems = createAsyncThunk(
   'cart/fetchCartItems',
   async (_, { rejectWithValue }) => {
       try {
           const token = localStorage.getItem('token');
-
-          // Obtener los items del carrito desde la API local
           const response = await fetch('/api/cart', {
               method: 'GET',
               headers: {
@@ -55,20 +52,14 @@ export const fetchCartItems = createAsyncThunk(
               return rejectWithValue(errorData.error || "Error al obtener los items del carrito");
           }
 
-          const { items } = await response.json(); // items con productId, quantity y price
+          const { items } = await response.json();
 
-          // Realizar una petición a FakeAPI para cada productId
+          // Obtener detalles del producto desde la FakeAPI
           const detailedItems = await Promise.all(items.map(async (item) => {
               const productResponse = await fetch(`${FAKE_API_URL}/${item.productId}`);
-              
-              // Comprobar si la solicitud fue exitosa
-              if (!productResponse.ok) {
-                  throw new Error("Error al obtener detalles del producto desde FakeAPI");
-              }
+              if (!productResponse.ok) throw new Error("Error al obtener detalles del producto desde FakeAPI");
               
               const productData = await productResponse.json();
-
-              // Retornar un objeto que combine los datos de la base de datos y de la FakeAPI
               return {
                   ...item,
                   title: productData.title,
@@ -85,49 +76,110 @@ export const fetchCartItems = createAsyncThunk(
   }
 );
 
+// Acción para eliminar un producto del carrito en la base de datos
+export const removeFromCart = createAsyncThunk(
+    'cart/removeFromCart',
+    async (productId, { rejectWithValue }) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/cart/item/${productId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
 
-export const removeFromCart = createAsyncThunk('cart/removeFromCart', async (productId, { getState }) => {
-    const token = localStorage.getItem('token');
-    const response = await fetch('/api/cart', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ items: getState().cart.items.filter(item => item.productId !== productId) })
-    });
-    return response.json();
-});
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.error || "Error al eliminar el producto del carrito");
+            }
 
+            return await response.json(); // Devolver los items actualizados
+        } catch (error) {
+            console.error("Error al eliminar el producto del carrito:", error);
+            return rejectWithValue("No se pudo eliminar el producto del carrito.");
+        }
+    }
+);
+
+// Acción para incrementar la cantidad de un producto en el carrito en la base de datos
+export const incrementQuantityAsync = createAsyncThunk(
+    'cart/incrementQuantity',
+    async (productId, { getState, rejectWithValue }) => {
+        try {
+            const token = localStorage.getItem('token');
+            const item = getState().cart.items.find(item => item.productId === productId);
+            
+            const response = await fetch(`/api/cart/item/${productId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ quantity: item.quantity + 1 }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.error || "Error al incrementar la cantidad del producto");
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error al incrementar la cantidad:", error);
+            return rejectWithValue("No se pudo incrementar la cantidad.");
+        }
+    }
+);
+
+// Acción para disminuir la cantidad de un producto en el carrito en la base de datos
+export const decrementQuantityAsync = createAsyncThunk(
+    'cart/decrementQuantity',
+    async (productId, { getState, rejectWithValue }) => {
+        try {
+            const token = localStorage.getItem('token');
+            const item = getState().cart.items.find(item => item.productId === productId);
+
+            if (item.quantity <= 1) return rejectWithValue("La cantidad no puede ser menor que 1.");
+
+            const response = await fetch(`/api/cart/item/${productId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ quantity: item.quantity - 1 }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.error || "Error al disminuir la cantidad del producto");
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error al disminuir la cantidad:", error);
+            return rejectWithValue("No se pudo disminuir la cantidad.");
+        }
+    }
+);
+
+// Slice de Redux para el carrito
 export const cartSlice = createSlice({
     name: 'cart',
     initialState: {
-        items: []
+        items: [],
+        status: null,
+        error: null,
     },
-    reducers: {
-        incrementQuantity: (state, action) => {
-            const item = state.items.find(item => item.productId === action.payload);
-            if (item) {
-                item.quantity++;
-            }
-        },
-        decrementQuantity: (state, action) => {
-            const item = state.items.find(item => item.productId === action.payload);
-            if (item && item.quantity > 1) {
-                item.quantity--;
-            }
-        },
-    },
+    reducers: {},
     extraReducers: (builder) => {
         builder
             .addCase(addToCart.fulfilled, (state, action) => {
                 state.items = action.payload.items;
             })
-            .addCase(removeFromCart.fulfilled, (state, action) => {
-                state.items = action.payload.items;
-            })
             .addCase(fetchCartItems.pending, (state) => {
-              state.status = 'loading';
+                state.status = 'loading';
             })
             .addCase(fetchCartItems.fulfilled, (state, action) => {
                 state.status = 'succeeded';
@@ -136,10 +188,19 @@ export const cartSlice = createSlice({
             .addCase(fetchCartItems.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload;
+            })
+            .addCase(removeFromCart.fulfilled, (state, action) => {
+                state.items = state.items.filter(item => item.productId !== action.meta.arg);
+            })
+            .addCase(incrementQuantityAsync.fulfilled, (state, action) => {
+                const updatedItem = state.items.find(item => item.productId === action.meta.arg);
+                if (updatedItem) updatedItem.quantity += 1;
+            })
+            .addCase(decrementQuantityAsync.fulfilled, (state, action) => {
+                const updatedItem = state.items.find(item => item.productId === action.meta.arg);
+                if (updatedItem && updatedItem.quantity > 1) updatedItem.quantity -= 1;
             });
-            
     }
 });
 
-export const { incrementQuantity, decrementQuantity } = cartSlice.actions;
 export default cartSlice.reducer;

@@ -3,8 +3,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import {
     fetchCartItems,
-    incrementQuantity,
-    decrementQuantity,
+    incrementQuantityAsync,
+    decrementQuantityAsync,
     removeFromCart,
 } from "@/store/slices/cartSlices";
 import CartItem from "@/components/CartItem";
@@ -12,7 +12,7 @@ import LoadingSpinner from "@/components/loadingSpinner";
 
 export default function Cart({ onClose }) {
     const dispatch = useDispatch();
-    const { items: cartItems, status, error } = useSelector((state) => state.cart);
+    const { items: cartItems = [], status, error } = useSelector((state) => state.cart); // Asegúrate de que cartItems sea un array
     const router = useRouter();
     const [isVisible, setIsVisible] = useState(false);
     const cartRef = useRef(null);
@@ -52,20 +52,30 @@ export default function Cart({ onClose }) {
         }
     };
 
-    const totalAmount = cartItems
+    // Asegúrate de que cartItems sea un array antes de usar reduce
+    const totalAmount = (cartItems || [])
         .reduce((total, item) => total + item.price * item.quantity, 0)
         .toFixed(2);
 
+    // Actualiza la cantidad en la base de datos al incrementar
     const handleIncrement = (item) => {
-        dispatch(incrementQuantity(item.productId));
+        dispatch(incrementQuantityAsync(item.productId))
+            .unwrap()
+            .catch((error) => console.error("Error al incrementar la cantidad:", error));
     };
 
+    // Actualiza la cantidad en la base de datos al disminuir
     const handleDecrement = (item) => {
-        dispatch(decrementQuantity(item.productId));
+        dispatch(decrementQuantityAsync(item.productId))
+            .unwrap()
+            .catch((error) => console.error("Error al disminuir la cantidad:", error));
     };
 
+    // Elimina el producto del carrito en la base de datos
     const handleRemove = (productId) => {
-        dispatch(removeFromCart(productId));
+        dispatch(removeFromCart(productId))
+            .unwrap()
+            .catch((error) => console.error("Error al eliminar el producto:", error));
     };
 
     return (
