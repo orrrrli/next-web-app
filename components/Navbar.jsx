@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BsCart2 } from "react-icons/bs";
@@ -7,6 +7,7 @@ import ModalLogout from "./ModalLogout";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchCategories } from "@/store/slices/categorySlices";
 import { fetchProductsByCategory } from "@/store/slices/productSlices";
+import { fetchCartItems } from "@/store/slices/cartSlices"; // Importa la acción de fetchCartItems
 import { logout, checkAuth } from "@/store/slices/authSlice";
 
 export default function Navbar() {
@@ -27,6 +28,13 @@ export default function Navbar() {
     useEffect(() => {
         dispatch(checkAuth());
     }, [dispatch]);
+
+    // Cargar los artículos del carrito cuando el usuario esté autenticado
+    useEffect(() => {
+        if (isAuthenticated) {
+            dispatch(fetchCartItems()); // Carga los artículos del carrito
+        }
+    }, [isAuthenticated, dispatch]);
 
     useEffect(() => {
         const handleScroll = () => {
