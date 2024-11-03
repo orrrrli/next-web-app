@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import { addToCart } from "@/store/slices/cartSlices";
 import { toast } from "react-toastify";
 import Link from "next/link";
@@ -7,28 +8,33 @@ import Image from "next/image";
 
 export default function ProductCard({ product }) {
     const dispatch = useDispatch();
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
 
     const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+    const cartItems = useSelector((state) => state.cart.items || []);
+    console.log("Cart items:", cartItems);
 
     const handleAddToCart = (e) => {
-        e.stopPropagation(); // Evita que el clic en el botón de agregar al carrito propague eventos no deseados
+        e.stopPropagation();
         if (!isAuthenticated) {
-            toast.info("Por favor, inicia sesión para agregar productos al carrito.");
+            toast.info("Please log in to add products to the cart.");
+            router.push("/auth/login");
             return;
         }
-
+    
         setIsLoading(true);
         setTimeout(() => {
             dispatch(addToCart(product));
             setIsLoading(false);
-            toast.success("Producto agregado al carrito!");
+            toast.success("Product added to cart!");
         }, 1000);
     };
+    
 
     return (
         <div className="max-w-sm rounded-2xl overflow-hidden shadow-lg bg-gray-800 relative cursor-pointer">
-            {/* Contenedor de la Imagen con el efecto de hover */}
+            {/* Image Container with Hover Effect */}
             <div className="relative group rounded-t-2xl overflow-hidden">
                 <Image
                     className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
@@ -38,7 +44,7 @@ export default function ProductCard({ product }) {
                     height={300}
                     loading="lazy"
                 />
-                {/* Descripción y botón "Show Product": visible solo en hover */}
+                {/* Description and "Show Product" Button: Visible on Hover */}
                 <div className="absolute inset-0 bg-gray-900 bg-opacity-70 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <p className="text-gray-300 text-sm mb-6 text-center">
                         {product.description.length > 100
@@ -52,7 +58,7 @@ export default function ProductCard({ product }) {
                     </Link>
                 </div>
             </div>
-            {/* Información básica: siempre visible y posición estática */}
+            {/* Basic Info: Always Visible */}
             <div className="p-4 flex flex-col items-center">
                 <h2 className="font-semibold text-xl text-white mb-2 text-center h-12 overflow-hidden line-clamp-2">
                     {product.title}

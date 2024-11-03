@@ -17,7 +17,7 @@ export default function Navbar() {
 
     const { isAuthenticated, username } = useSelector((state) => state.auth);
     const cartItems = useSelector((state) => state.cart.items);
-    const totalItems = cartItems.reduce(
+    const totalItems = (cartItems || []).reduce(
         (total, item) => total + item.quantity,
         0
     );

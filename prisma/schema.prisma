@@ -11,23 +11,40 @@ model User {
     id       Int      @id @default(autoincrement())
     email    String   @unique
     password String
-    orders   Order[]  // Relación de uno a muchos con órdenes
+    orders   Order[]  // One-to-many relationship with orders
+    cart     Cart?    // One-to-one relationship with cart (optional)
 }
 
 model Order {
-    id        Int       @id @default(autoincrement())
-    userId    Int
-    user      User      @relation(fields: [userId], references: [id])
-    createdAt DateTime  @default(now())
+    id          Int        @id @default(autoincrement())
+    userId      Int
+    user        User       @relation(fields: [userId], references: [id])
+    createdAt   DateTime   @default(now())
     totalAmount Float
-    items     OrderItem[]
+    items       OrderItem[]
 }
 
 model OrderItem {
-    id       Int     @id @default(autoincrement())
-    orderId  Int
-    order    Order   @relation(fields: [orderId], references: [id])
+    id        Int    @id @default(autoincrement())
+    orderId   Int
+    order     Order  @relation(fields: [orderId], references: [id])
     productId Int
-    quantity Int
-    price    Float
+    quantity  Int
+    price     Float
+}
+
+model Cart {
+    id      Int        @id @default(autoincrement())
+    userId  Int        @unique
+    user    User       @relation(fields: [userId], references: [id])
+    items   CartItem[] // One-to-many relationship with cart items
+}
+
+model CartItem {
+    id        Int   @id @default(autoincrement())
+    cartId    Int
+    cart      Cart  @relation(fields: [cartId], references: [id])
+    productId Int
+    quantity  Int
+    price     Float
 }

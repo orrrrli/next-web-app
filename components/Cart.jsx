@@ -1,9 +1,8 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import {
+    fetchCartItems,
     incrementQuantity,
     decrementQuantity,
     removeFromCart,
@@ -13,15 +12,18 @@ import LoadingSpinner from "@/components/loadingSpinner";
 
 export default function Cart({ onClose }) {
     const dispatch = useDispatch();
-    const cartItems = useSelector((state) => state.cart.items);
+    const { items: cartItems, status, error } = useSelector((state) => state.cart);
     const router = useRouter();
     const [isVisible, setIsVisible] = useState(false);
     const cartRef = useRef(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        setIsVisible(true);
+        dispatch(fetchCartItems());
+    }, [dispatch]);
 
+    useEffect(() => {
+        setIsVisible(true);
         const handleClickOutside = (event) => {
             if (cartRef.current && !cartRef.current.contains(event.target)) {
                 handleClose();
@@ -32,7 +34,6 @@ export default function Cart({ onClose }) {
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleClose = () => {
@@ -55,6 +56,18 @@ export default function Cart({ onClose }) {
         .reduce((total, item) => total + item.price * item.quantity, 0)
         .toFixed(2);
 
+    const handleIncrement = (item) => {
+        dispatch(incrementQuantity(item.productId));
+    };
+
+    const handleDecrement = (item) => {
+        dispatch(decrementQuantity(item.productId));
+    };
+
+    const handleRemove = (productId) => {
+        dispatch(removeFromCart(productId));
+    };
+
     return (
         <div
             className={`fixed inset-0 flex justify-end z-50 transition-transform transform ${
@@ -63,11 +76,14 @@ export default function Cart({ onClose }) {
             <div
                 ref={cartRef}
                 className="bg-gray-800 shadow-2xl w-[320px] max-w-full h-screen m-4 rounded-lg overflow-hidden flex flex-col relative pb-6">
-                {loading && (
+                
+                {status === 'loading' && (
                     <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10">
                         <LoadingSpinner />
                     </div>
                 )}
+                {status === 'failed' && <p>Error: {error}</p>}
+                
                 <div className="flex justify-between items-center p-4 border-b border-gray-700">
                     <h2 className="text-xl font-semibold text-white">
                         Shopping Cart
@@ -87,15 +103,9 @@ export default function Cart({ onClose }) {
                                 <CartItem
                                     key={item.productId}
                                     item={item}
-                                    onIncrement={() =>
-                                        dispatch(incrementQuantity(item.productId))
-                                    }
-                                    onDecrement={() =>
-                                        dispatch(decrementQuantity(item.productId))
-                                    }
-                                    onRemove={() =>
-                                        dispatch(removeFromCart(item.productId))
-                                    }
+                                    onIncrement={() => handleIncrement(item)}
+                                    onDecrement={() => handleDecrement(item)}
+                                    onRemove={() => handleRemove(item.productId)}
                                 />
                             ))}
                         </ul>
